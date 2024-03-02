@@ -5,7 +5,7 @@ from typing import List
 
 from fastapi import HTTPException, UploadFile, File
 from langchain_community.vectorstores.chroma import Chroma
-from constants import AGENT_PROMPT
+from constants import AGENT_PROMPT, PRODUCT_TOOL_PROMPT
 from utils import get_llm, get_latest_history, load_embeddings, load_document
 from Database import crud, models
 from datetime import datetime as dt
@@ -14,7 +14,7 @@ from langchain.agents.openai_functions_agent.agent_token_buffer_memory import Ag
 from langchain.tools.retriever import create_retriever_tool
 from langchain_core.documents import Document
 from langchain_core.messages import SystemMessage, AIMessage, HumanMessage
-from langchain_core.prompts import MessagesPlaceholder
+from langchain_core.prompts import MessagesPlaceholder, PromptTemplate
 
 
 def load_existing_DB(DB_PATH, embeddings):
@@ -26,7 +26,6 @@ def load_existing_DB(DB_PATH, embeddings):
 
 
 async def chat_response(message: str, sessionId: str, db):
-
     embeddings = load_embeddings("openai")
     llm = get_llm("gpt-3.5-turbo", "openai", {"temperature": 0.2})
     DB_PATH = "./Chroma"
@@ -35,6 +34,7 @@ async def chat_response(message: str, sessionId: str, db):
     retrieval_tool = create_retriever_tool(
         retriever=vecDB.as_retriever(),
         name="product_detail_tool",
+        document_prompt=PromptTemplate.from_template(PRODUCT_TOOL_PROMPT),
         description="Searches and return details about a particular product",
     )
 
@@ -70,15 +70,11 @@ async def chat_response(message: str, sessionId: str, db):
         history.append(
             (message, answer)
         )
-        # print("Updated History: ", history)
         crud.add_chat_history(db, sessionId, history)
         return {"answer": answer}
     except Exception as e:
         print(e)
         return {"message": "Sorry, Something went wrong"}
-
-
-
 
     return {'response': response.content}
 
