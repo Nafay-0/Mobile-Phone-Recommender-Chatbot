@@ -1,3 +1,3 @@
 start:
-        uvicorn main:app --reload
+    uvicorn src.app.main:app --reload
 
