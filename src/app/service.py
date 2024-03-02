@@ -1,8 +1,8 @@
 import json
 import os
 import uuid
-from .utils import get_llm, get_latest_history
-from .Database import crud, models
+from utils import get_llm, get_latest_history
+from Database import crud, models
 from datetime import datetime as dt
 from langchain.agents import AgentExecutor, OpenAIFunctionsAgent, create_openai_functions_agent
 from langchain.agents.openai_functions_agent.agent_token_buffer_memory import AgentTokenBufferMemory

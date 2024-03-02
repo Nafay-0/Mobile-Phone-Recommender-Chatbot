@@ -207,7 +207,7 @@ const fetchMessage = async (type, data) => {
     }
 
     else {
-      const response = await axios.post('/text-query', {
+      const response = await axios.post(`/text-query/?question=${data}`, {
         question: data,
       });
       return response.data.answer;
