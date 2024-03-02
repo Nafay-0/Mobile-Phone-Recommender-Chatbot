@@ -1,5 +1,6 @@
 from dotenv import load_dotenv
-from langchain_openai import ChatOpenAI
+from langchain_community.embeddings import HuggingFaceEmbeddings
+from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from langchain_community.llms import HuggingFaceHub
 import json
 
@@ -30,6 +31,18 @@ def get_llm(model_name, type, kwargs):
     return llm
 
 
+def load_embeddings(type, kwargs=None):
+    if type == "openai":
+        return OpenAIEmbeddings(model="text-embedding-3-large")
+    elif type == "hugging_face":
+        model_name = "sentence-transformers/all-mpnet-base-v2"
+        model_kwargs = {'device': 'cpu'}
+        encode_kwargs = {'normalize_embeddings': True}
+        return HuggingFaceEmbeddings(model_name=model_name,
+                                     model_kwargs=model_kwargs,
+                                     encode_kwargs=encode_kwargs)
+
+
 def get_latest_history(chatbotHistory):
     history = []
     if chatbotHistory is not None:
@@ -42,4 +55,3 @@ def get_latest_history(chatbotHistory):
             history.append((human, ai))
 
     return history
-
