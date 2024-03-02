@@ -5,6 +5,19 @@ import { ThreeDots } from "react-loader-spinner";
 import micOn from './mic-on.svg';
 import micOff from './mic-off.svg';
 
+function generateUUID() {
+  return crypto.randomUUID();
+}
+
+const base64ToBlob = (base64) => {
+  const binaryString = window.atob(base64); // Decode base64
+  const len = binaryString.length;
+  const bytes = new Uint8Array(len);
+  for (let i = 0; i < len; i++) {
+    bytes[i] = binaryString.charCodeAt(i);
+  }
+  return new Blob([bytes], { type: 'audio/mp3' }); // Assuming the audio is mp3 format
+};
 
 function Header({ header, color, fontColor }) {
   return <div className="header-bot" style={{ backgroundColor: color, color: fontColor }}>&nbsp;{header}</div>;
@@ -149,15 +162,16 @@ function UserMessage({ text, msgColor, fontColor }) {
   );
 }
 
-function AudioMessage({ audioUrl, align = 'left', msgColor, fontColor }) {
+function AudioMessage({ audioUrl, align, msgColor, fontColor }) {
 
   const alignmentClass = align === 'left' ? 'message-container-bot' : 'message-container';
   const messageClass = align === 'left' ? 'bot-message' : 'user-message';
+  const audioClass = align === 'left' ? 'bot-audio' : 'user-audio';
 
   return (
     <div className={alignmentClass}>
       <div className={messageClass} style={{ backgroundColor: msgColor, color: fontColor, padding: '0' }}>
-        <audio controls src={audioUrl} style={{ maxWidth: '100%' }}>
+        <audio controls src={audioUrl} style={{ maxWidth: '100%' }} className={audioClass}>
           Your browser does not support the audio element.
         </audio>
       </div>
@@ -192,25 +206,35 @@ function Messages({ messages, load }) {
 }
 
 
-const fetchMessage = async (type, data) => {
+const fetchMessage = async (type, data, sessionId) => {
 
   try {
 
     if (type === 'audio') {
       const formData = new FormData();
       formData.append('audio', data);
+      formData.append('sessionID', sessionId);
 
-      const response = await axios.post('/audio-query', formData);
+      const response = await axios.post('http://localhost:8000/audio-query', formData,{
+        "Content-Type": "multipart/form-data",
+      },);
 
-      return response.data.answer;
+      const audioBlob = base64ToBlob(response.data.audio);
+
+      const url = URL.createObjectURL(audioBlob);
+
+      return {transcript: 'You said: \"'+ response.data.transcript +'\"', answer: response.data.answer, audio_url: url};
+      
 
     }
 
     else {
-      const response = await axios.post(`/text-query/?question=${data}`, {
+      const response = await axios.post(`http://localhost:8000/text-query`, {
         question: data,
+        sessionID: sessionId,
       });
       return response.data.answer;
+      
     }
 
   } catch (error) {
@@ -226,6 +250,9 @@ function ChatBot({ botID, header, welcomeMessage, headerColor, botMessageColor, 
   const [unique, setUnique] = useState(0);
   const [loading, setLoading] = useState(false);
   const [showChatBot, setShowChatBot] = useState(true);
+  const [sessionId, setSessionId] = useState('');
+
+
 
   const toggleChatBot = () => {
     setShowChatBot((prevState) => !prevState);
@@ -245,14 +272,17 @@ function ChatBot({ botID, header, welcomeMessage, headerColor, botMessageColor, 
       k += 1;
       setUnique(k);
     }
+    const newSessionId = generateUUID();
+    setSessionId(newSessionId);
     loadWelcomeMessage();
+
   }, []);
 
   const send = async (message) => {
 
     let k = unique;
 
-    if (message.type == 'text') {
+    if (message.type === 'text') {
       let text = message.content;
 
       const userMessage = <UserMessage key={k} text={text} msgColor={userMessageColor} fontColor={userFontColor} />;
@@ -261,7 +291,7 @@ function ChatBot({ botID, header, welcomeMessage, headerColor, botMessageColor, 
       setMessages((prevMessages) => [...prevMessages, userMessage]);
 
       setLoading(true);
-      let answer = await fetchMessage('text', text);
+      let answer = await fetchMessage('text', text, sessionId);
       setLoading(false);
 
       const botMessage = (
@@ -279,30 +309,42 @@ function ChatBot({ botID, header, welcomeMessage, headerColor, botMessageColor, 
       setUnique(k);
     }
 
-    else if (message.type == 'audio') {
+    else if (message.type === 'audio') {
 
       let audioUrl = message.content.url;
       let audioFile = message.content.file;
-      const audioMessage = <AudioMessage key={k} audioUrl={audioUrl} align={'right'} msgColor={userMessageColor} fontColor={userFontColor} />
+      const audioMessage = <AudioMessage key={k} audioUrl={audioUrl} align={'right'} msgColor={'#b8dafc'} fontColor={userFontColor} />
       k += 1
 
       setMessages((prevMessages) => [...prevMessages, audioMessage]);
 
       setLoading(true);
-      let answer = await fetchMessage('audio', audioFile);
+      let response = await fetchMessage('audio', audioFile, sessionId);
       setLoading(false);
 
-      const botMessage = (
+      const botMessage1 = (
         <BotMessage
           key={k}
-          msg={answer}
+          msg={response.transcript}
           msgColor={botMessageColor}
           fontColor={botFontColor}
         />
       );
 
-      setMessages((prevMessages) => [...prevMessages, botMessage]);
-      k += 1;
+      const botMessage2 = (
+        <BotMessage
+          key={k+1}
+          msg={response.answer}
+          msgColor={botMessageColor}
+          fontColor={botFontColor}
+        />
+      );
+
+      const botAudioMessage = <AudioMessage key={k+2} audioUrl={response.audio_url} align={'left'} msgColor={'#f9d9fd'} fontColor={botFontColor} />
+
+
+      setMessages((prevMessages) => [...prevMessages, botMessage1, botMessage2, botAudioMessage]);
+      k += 3;
 
       setUnique(k);
     }

@@ -165,9 +165,18 @@ font-size: 12px;
 
 }
 
-audio::-webkit-media-controls-play-button,
-     audio::-webkit-media-controls-panel {
-     background-color: #cccccc;
-     color: #000;
+.user-audio::-webkit-media-controls-play-button,
+.user-audio::-webkit-media-controls-panel {
+     background-color: #b8dafc;
+     color: black;
      border: none;
      }
+
+     .bot-audio::-webkit-media-controls-play-button,
+     .bot-audio::-webkit-media-controls-panel {
+          background-color: #f9d9fd;
+          color: black;
+          border: none;
+          }
+
+
