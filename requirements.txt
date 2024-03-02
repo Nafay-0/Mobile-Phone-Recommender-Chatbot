@@ -9,3 +9,4 @@ tiktoken==0.6.0
 httpx==0.26.0
 python-multipart
 aiofiles
+chromadb

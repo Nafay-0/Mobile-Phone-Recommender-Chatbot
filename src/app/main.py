@@ -2,7 +2,7 @@ import os
 import time
 import requests
 import shutil
-from typing import Optional
+from typing import Optional, List
 from fastapi import FastAPI, File, UploadFile, HTTPException, Request, Depends
 from fastapi.responses import JSONResponse, FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
@@ -17,6 +17,7 @@ from starlette.templating import Jinja2Templates
 models.Base.metadata.create_all(bind=engine)  # Create tables
 
 app = FastAPI()
+
 
 app.add_middleware(
     CORSMiddleware,
@@ -33,10 +34,11 @@ AUDIO_FOLDER = 'Temp_Audio'
 os.makedirs(AUDIO_FOLDER, exist_ok=True)
 
 # Serving static files
-app.mount("/static", StaticFiles(directory="build/static"), name="static")
+# app.mount("/static", StaticFiles(directory="build/static"), name="static")
 
 # Template rendering
 templates = Jinja2Templates(directory="build")
+
 
 # Dependency to get DB session
 def get_db():
@@ -46,20 +48,22 @@ def get_db():
     finally:
         db.close()
 
+
 def generate_unique_filename(prefix, extension):
     """Generate a unique filename with a timestamp."""
     timestamp = int(time.time() * 1000)  # Current time in milliseconds
     return f"{prefix}_{timestamp}.{extension}"
 
+
 def generate_response(question: str):
     time.sleep(2)
     return f"Dummy Response for {question}"
 
-def generate_transcript(filepath: str):
 
+def generate_transcript(filepath: str):
     url = "https://api.deepgram.com/v1/listen?nova-2-general"
 
-    file = open(filepath,"rb")
+    file = open(filepath, "rb")
     payload = file
     headers = {
         "Content-Type": "audio/*",
@@ -76,13 +80,15 @@ def generate_transcript(filepath: str):
 
     return text
 
+
 @app.post("/text-query")
 async def query_text(question: str):
     if not question:
         raise HTTPException(status_code=400, detail="No data provided")
-    
+
     answer = generate_response(question)
     return {"answer": answer}
+
 
 @app.post("/audio-query")
 async def query_audio(audio: UploadFile = File(...)):
@@ -98,6 +104,7 @@ async def query_audio(audio: UploadFile = File(...)):
     answer = generate_transcript(filepath)
 
     return {"answer": answer}
+
 
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
@@ -118,3 +125,11 @@ async def chat(message: str, sessionId: str, db: Session = Depends(get_db)):
     Chat Function
     """
     return await chat_response(message, sessionId, db)
+
+@app.post("/upload-files/")
+async def create_upload_files(files: List[UploadFile] = File(...)):
+    """
+    Upload Files Function
+    """
+    return await create_upload_files(files)
+

@@ -1,4 +1,5 @@
 from dotenv import load_dotenv
+from langchain_community.document_loaders import PyPDFLoader, CSVLoader, TextLoader
 from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from langchain_community.llms import HuggingFaceHub
@@ -55,3 +56,28 @@ def get_latest_history(chatbotHistory):
             history.append((human, ai))
 
     return history
+
+import sys
+import csv
+
+def load_document(fileName, path):
+    csv.field_size_limit(sys.maxsize)
+    load_dotenv()  # load environment variables from .env file
+    # Check file type
+    file = path + fileName
+    if file.endswith(".pdf"):
+        loader = PyPDFLoader(file)
+    elif file.endswith(".csv"):
+        loader = CSVLoader(file,
+                           csv_args={
+        "delimiter": "|"
+        })
+
+
+    elif file.endswith(".txt"):
+        loader = TextLoader(file)
+    else:
+        raise Exception("File type not supported")
+    # Load documents
+    documents = loader.load_and_split()
+    return documents
