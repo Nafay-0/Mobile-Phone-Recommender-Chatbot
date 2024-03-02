@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-import "./chatpage.css";
+import "./chatbot.css";
 import axios from 'axios';
 import { ThreeDots } from "react-loader-spinner";
 import micOn from './mic-on.svg';
