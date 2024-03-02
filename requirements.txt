@@ -10,3 +10,4 @@ httpx==0.26.0
 python-multipart
 aiofiles
 chromadb
+twilio
