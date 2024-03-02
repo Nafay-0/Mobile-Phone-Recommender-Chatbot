@@ -36,21 +36,17 @@ AUDIO_FOLDER = 'Temp_Audio'
 os.makedirs(AUDIO_FOLDER, exist_ok=True)
 
 # Serving static files
-# app.mount("/static", StaticFiles(directory="build/static"), name="static")
+app.mount("/static", StaticFiles(directory="build/static"), name="static")
 
 # Template rendering
 templates = Jinja2Templates(directory="build")
 
-# Model for the text-query endpoint
 class TextQuery(BaseModel):
     question: str
     sessionID: str
+    response: str
 
-# Model for the audio-query endpoint
-# Note: When using the model in an endpoint, you should use UploadFile directly with FastAPI's File dependency.
-class AudioQuery(BaseModel):
-    audio_file: UploadFile = File(...)
-    sessionID: str
+
 
 
 # Dependency to get DB session
@@ -126,16 +122,26 @@ async def query_text(textQuery: TextQuery, db: Session = Depends(get_db)):
 
     question = textQuery.question
     session_id = textQuery.sessionID
+    responseType = textQuery.response
 
     print(f'Session: {session_id} and Query: {question}')
     if not question:
         raise HTTPException(status_code=400, detail="No data provided")
 
-    return await chat_response(question, session_id, db)
 
+    answer = await chat_response(question, session_id, db)
+
+    if responseType == 'text':
+        return answer
+    
+    elif responseType == 'audio':
+        audio_response = generateSpeech(answer['answer'])
+        with open(audio_response, "rb") as file:
+            encoded_file = base64.b64encode(file.read()).decode('utf-8')
+        return {'audio': encoded_file}
 
 @app.post("/audio-query")
-async def query_audio(sessionID: str = Form(...), audio: UploadFile = File(...), db: Session = Depends(get_db)):
+async def query_audio(sessionID: str = Form(...), response: str = Form(...), audio: UploadFile = File(...), db: Session = Depends(get_db)):
 
     if not audio.filename:
         raise HTTPException(status_code=400, detail="No selected file")
@@ -148,15 +154,17 @@ async def query_audio(sessionID: str = Form(...), audio: UploadFile = File(...),
 
     transcript = generate_transcript(filepath)
     answer = await chat_response(transcript, sessionID, db)
-    answer['transcript'] = transcript
 
-    audio_response = generateSpeech(answer['answer'])
-    with open(audio_response, "rb") as file:
-        encoded_file = base64.b64encode(file.read()).decode('utf-8')
-
-    answer['audio'] = encoded_file
+    if response == 'text':
+        answer['transcript'] = transcript
+        return answer
     
-    return answer
+    elif response == 'audio':
+        audio_response = generateSpeech(answer['answer'])
+        with open(audio_response, "rb") as file:
+            encoded_file = base64.b64encode(file.read()).decode('utf-8')
+        answer['audio'] = encoded_file
+        return {'transcript': transcript, 'audio': encoded_file}
 
 
 @app.get("/", response_class=HTMLResponse)

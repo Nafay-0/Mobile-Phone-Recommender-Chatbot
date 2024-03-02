@@ -19,8 +19,27 @@ const base64ToBlob = (base64) => {
   return new Blob([bytes], { type: 'audio/mp3' }); // Assuming the audio is mp3 format
 };
 
-function Header({ header, color, fontColor }) {
-  return <div className="header-bot" style={{ backgroundColor: color, color: fontColor }}>&nbsp;{header}</div>;
+
+function Header({ header, color, fontColor, onToggleMode, mode }) {
+  return (
+    <div className="header-bot" style={{ backgroundColor: color, color: fontColor }}>
+      {header}
+      <div className="toggle-switch">
+        <button 
+          onClick={() => onToggleMode('text')} 
+          className={mode === 'text' ? 'active' : ''}
+        >
+          Text
+        </button>
+        <button 
+          onClick={() => onToggleMode('audio')} 
+          className={mode === 'audio' ? 'active' : ''}
+        >
+          Audio
+        </button>
+      </div>
+    </div>
+  );
 }
 
 function ChatBotIcon({ image, showChatBot, toggleChatBot }) {
@@ -60,6 +79,7 @@ function Input({ onSend }) {
 
   const startRecording = async () => {
     try {
+      
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       mediaRecorderRef.current = new MediaRecorder(stream);
       mediaRecorderRef.current.ondataavailable = (e) => {
@@ -77,14 +97,12 @@ function Input({ onSend }) {
 
         onSend({ type: 'audio', content: { 'url': audioUrl, 'file': audioFile } });
       };
-
       setIsRecording(true);
+
     } catch (error) {
       console.error("Error starting audio recording:", error);
     }
   };
-
-
 
   const stopRecording = () => {
     if (mediaRecorderRef.current) {
@@ -99,7 +117,7 @@ function Input({ onSend }) {
         <input
           type="text"
           onChange={handleInputChange}
-          value={text}
+          value= {isRecording? ' Recording...' : text}
           placeholder="Enter your message here"
         />
         <button type="submit">
@@ -167,6 +185,15 @@ function AudioMessage({ audioUrl, align, msgColor, fontColor }) {
   const alignmentClass = align === 'left' ? 'message-container-bot' : 'message-container';
   const messageClass = align === 'left' ? 'bot-message' : 'user-message';
   const audioClass = align === 'left' ? 'bot-audio' : 'user-audio';
+  const el = useRef(null);
+
+  useEffect(() => {
+
+    if(el.current){
+      el.current.scrollIntoView({ block: "end", behavior: "smooth" });
+    }
+  }, []);
+
 
   return (
     <div className={alignmentClass}>
@@ -175,6 +202,7 @@ function AudioMessage({ audioUrl, align, msgColor, fontColor }) {
           Your browser does not support the audio element.
         </audio>
       </div>
+      <div ref={el}></div>
     </div>
   );
 }
@@ -206,7 +234,7 @@ function Messages({ messages, load }) {
 }
 
 
-const fetchMessage = async (type, data, sessionId) => {
+const fetchMessage = async (type, data, sessionId, responseMode) => {
 
   try {
 
@@ -214,27 +242,38 @@ const fetchMessage = async (type, data, sessionId) => {
       const formData = new FormData();
       formData.append('audio', data);
       formData.append('sessionID', sessionId);
+      formData.append('response', responseMode)
 
       const response = await axios.post('http://localhost:8000/audio-query', formData,{
         "Content-Type": "multipart/form-data",
       },);
 
-      const audioBlob = base64ToBlob(response.data.audio);
 
-      const url = URL.createObjectURL(audioBlob);
-
-      return {transcript: 'You said: \"'+ response.data.transcript +'\"', answer: response.data.answer, audio_url: url};
-      
-
+      if(responseMode === 'text'){
+        return {transcript: 'You said: "'+ response.data.transcript +'"', answer: response.data.answer};
+      }
+      else if(responseMode === 'audio'){
+        const audioBlob = base64ToBlob(response.data.audio);
+        const url = URL.createObjectURL(audioBlob);
+        return {transcript: 'You said: "'+ response.data.transcript +'"', audio_url: url};
+      }
     }
 
     else {
       const response = await axios.post(`http://localhost:8000/text-query`, {
         question: data,
         sessionID: sessionId,
+        response: responseMode,
       });
-      return response.data.answer;
-      
+
+      if(responseMode === 'text'){
+        return response.data.answer;
+      }
+      else if(responseMode === 'audio'){
+        const audioBlob = base64ToBlob(response.data.audio);
+        const url = URL.createObjectURL(audioBlob);
+        return url
+      }
     }
 
   } catch (error) {
@@ -251,8 +290,11 @@ function ChatBot({ botID, header, welcomeMessage, headerColor, botMessageColor, 
   const [loading, setLoading] = useState(false);
   const [showChatBot, setShowChatBot] = useState(true);
   const [sessionId, setSessionId] = useState('');
+  const [mode, setMode] = useState('text'); // Add this state to manage mode
 
-
+  const toggleMode = (newMode) => {
+    setMode(newMode);
+  };
 
   const toggleChatBot = () => {
     setShowChatBot((prevState) => !prevState);
@@ -291,19 +333,26 @@ function ChatBot({ botID, header, welcomeMessage, headerColor, botMessageColor, 
       setMessages((prevMessages) => [...prevMessages, userMessage]);
 
       setLoading(true);
-      let answer = await fetchMessage('text', text, sessionId);
+      let answer = await fetchMessage('text', text, sessionId, mode);
       setLoading(false);
 
-      const botMessage = (
-        <BotMessage
-          key={k}
-          msg={answer}
-          msgColor={botMessageColor}
-          fontColor={botFontColor}
-        />
-      );
-
-      setMessages((prevMessages) => [...prevMessages, botMessage]);
+      if (mode === 'text'){
+        const botMessage = (
+          <BotMessage
+            key={k}
+            msg={answer}
+            msgColor={botMessageColor}
+            fontColor={botFontColor}
+          />
+        );
+  
+        setMessages((prevMessages) => [...prevMessages, botMessage]);
+      }
+      else if (mode === 'audio'){
+        const botAudioMessage = <AudioMessage key={k} audioUrl={answer} align={'left'} msgColor={'#f9d9fd'} fontColor={botFontColor} />  
+        setMessages((prevMessages) => [...prevMessages, botAudioMessage]);
+      }
+      
       k += 1;
 
       setUnique(k);
@@ -319,7 +368,7 @@ function ChatBot({ botID, header, welcomeMessage, headerColor, botMessageColor, 
       setMessages((prevMessages) => [...prevMessages, audioMessage]);
 
       setLoading(true);
-      let response = await fetchMessage('audio', audioFile, sessionId);
+      let response = await fetchMessage('audio', audioFile, sessionId, mode);
       setLoading(false);
 
       const botMessage1 = (
@@ -331,20 +380,23 @@ function ChatBot({ botID, header, welcomeMessage, headerColor, botMessageColor, 
         />
       );
 
-      const botMessage2 = (
-        <BotMessage
-          key={k+1}
-          msg={response.answer}
-          msgColor={botMessageColor}
-          fontColor={botFontColor}
-        />
-      );
-
-      const botAudioMessage = <AudioMessage key={k+2} audioUrl={response.audio_url} align={'left'} msgColor={'#f9d9fd'} fontColor={botFontColor} />
-
-
-      setMessages((prevMessages) => [...prevMessages, botMessage1, botMessage2, botAudioMessage]);
-      k += 3;
+      if (mode === 'text'){
+        const botMessage2 = (
+          <BotMessage
+            key={k+1}
+            msg={response.answer}
+            msgColor={botMessageColor}
+            fontColor={botFontColor}
+          />
+        );
+        setMessages((prevMessages) => [...prevMessages, botMessage1, botMessage2]);
+      }
+      else if(mode === 'audio'){
+        const botAudioMessage = <AudioMessage key={k+1} audioUrl={response.audio_url} align={'left'} msgColor={'#f9d9fd'} fontColor={botFontColor} />
+        setMessages((prevMessages) => [...prevMessages, botMessage1, botAudioMessage]);
+      }
+ 
+      k += 2;
 
       setUnique(k);
     }
@@ -356,7 +408,7 @@ function ChatBot({ botID, header, welcomeMessage, headerColor, botMessageColor, 
 
     <div className="chatbot-container">
       {showChatBot && <div className="chatbot">
-        <Header header={header} color={headerColor} fontColor={headerFontColor} />
+        <Header header={header} color={headerColor} fontColor={headerFontColor} onToggleMode={toggleMode} mode={mode} />
         <Messages messages={messages} load={loading} />
         <Input onSend={send} />
 

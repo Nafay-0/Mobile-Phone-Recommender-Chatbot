@@ -1,18 +1,18 @@
 {
   "files": {
-    "main.css": "/static/css/main.8c317a57.css",
-    "main.js": "/static/js/main.e4976de8.js",
+    "main.css": "/static/css/main.51b75e6a.css",
+    "main.js": "/static/js/main.f639d552.js",
     "static/js/787.8fb4aeac.chunk.js": "/static/js/787.8fb4aeac.chunk.js",
     "static/media/chatbot_icon.png": "/static/media/chatbot_icon.0159b8b16f5798407124.png",
     "static/media/mic-off.svg": "/static/media/mic-off.c3ba3a299569eee4de7a8af02b466f96.svg",
     "static/media/mic-on.svg": "/static/media/mic-on.aaa47f0338fe6047d948ec503aea6ff5.svg",
     "index.html": "/index.html",
-    "main.8c317a57.css.map": "/static/css/main.8c317a57.css.map",
-    "main.e4976de8.js.map": "/static/js/main.e4976de8.js.map",
+    "main.51b75e6a.css.map": "/static/css/main.51b75e6a.css.map",
+    "main.f639d552.js.map": "/static/js/main.f639d552.js.map",
     "787.8fb4aeac.chunk.js.map": "/static/js/787.8fb4aeac.chunk.js.map"
   },
   "entrypoints": [
-    "static/css/main.8c317a57.css",
-    "static/js/main.e4976de8.js"
+    "static/css/main.51b75e6a.css",
+    "static/js/main.f639d552.js"
   ]
 }
