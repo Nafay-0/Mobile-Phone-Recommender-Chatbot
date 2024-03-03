@@ -11,16 +11,16 @@ The chatbot has the following features:
 
 To run the project, follow these steps:
 
-1. Navigate to the project directory:
-
-    ```
-    cd src/app
-    ```
-   
-2. Install the required dependencies:
+1. Install the required dependencies:
 
     ```
     pip install -r requirements.txt
+    ```
+
+2. Navigate to the backend directory:
+
+    ```
+    cd src/app
     ```
    
 2. Run the following command:
@@ -28,6 +28,7 @@ To run the project, follow these steps:
     ```
     uvicorn main:app --reload --port 8080
     ```
+To change frontend, you need to run the React frontend seperatly and build again.
 
 ## Instructions for Improvement/Updates
 
